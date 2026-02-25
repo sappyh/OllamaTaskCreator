@@ -5,3 +5,6 @@ __pycache__/
 
 # pyenv
 venv/*
+
+#.cfg
+*.cfg

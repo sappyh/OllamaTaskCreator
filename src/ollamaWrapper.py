@@ -24,7 +24,35 @@ class OllamaWrapper:
                 return True
         return False
     
-    def getModel(self):
+    async def initModel(self):
+        """
+        Asynchronously checks if the model is locally available and pulls it if not.
+        """
+        if not self.isRunning():
+            client = ollama.AsyncClient()
+            await client.pull(self.modelName)
+            
+    def generateTasksFromNotes(self, notes: list) -> str:
+        """
+        Generates actionable, GTD-style tasks from a list of Obsidian notes.
+        """
+        system_prompt = (
+            "You are an expert productivity assistant adhering to Getting Things Done (GTD) principles. "
+            "Your task is to review the following memos and brain dumps and generate a clean, actionable "
+            "to-do list. For items that are actionable, write them as clear tasks. For items that are not "
+            "immediately actionable, create tasks for clarification. Output only the task list."
+        )
         
-
-    
+        user_prompt = "Here are the notes:\n\n"
+        for i, note in enumerate(notes, 1):
+            user_prompt += f"--- Note {i} ---\n{note}\n\n"
+            
+        response = ollama.chat(
+            model=self.modelName,
+            messages=[
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': user_prompt}
+            ]
+        )
+        
+        return response.get('message', {}).get('content', '')
