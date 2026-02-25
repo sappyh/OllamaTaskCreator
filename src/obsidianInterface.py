@@ -1,7 +1,8 @@
 from pathlib import Path
 import os
+from src.interfaces import BaseNotesSource
 
-class ObsidianInterface:
+class ObsidianInterface(BaseNotesSource):
     def __init__(self, pathToVault):
         self.path = Path(pathToVault).expanduser()
     

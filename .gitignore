@@ -8,3 +8,6 @@ venv/*
 
 #.cfg
 *.cfg
+
+#Logs
+*.log

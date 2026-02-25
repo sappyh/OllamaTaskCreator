@@ -1,0 +1,52 @@
+name: Python Tests
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    # Optional but good practice for Ollama (though tests currently mock requests or don't require heavy lifting)
+    services:
+      # If we needed a real DB or something, we'd add it here.
+      pass:
+        image: alpine
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      # Since we mock vikunja, but call ollama in tests...
+      # We either need to mock ollama or install it in CI.
+      # To keep CI fast and reliable, if tests require an Ollama daemon, we can install it:
+      - name: Install Ollama (Optional for local testing)
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          # Start Ollama service in the background
+          ollama serve &
+          # Wait a few seconds for it to bind to port 11434
+          sleep 5
+          # Note: Our tests actually pull tinyllama or mock the tests, so this ensures the daemon is up.
+          
+      - name: Run Tests with Pytest
+        run: |
+          python -m pytest tests/ --cov=src --cov-report=term-missing

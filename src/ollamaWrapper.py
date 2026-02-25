@@ -1,7 +1,7 @@
 import ollama
 
 class OllamaWrapper:
-    def __init__(self, modelName='ministral-3'):
+    def __init__(self, modelName='llama3.1:8b'):
         self.modelName = modelName
     
     def isRunning(self):
@@ -35,24 +35,34 @@ class OllamaWrapper:
     def generateTasksFromNotes(self, notes: list) -> str:
         """
         Generates actionable, GTD-style tasks from a list of Obsidian notes.
+        Returns a JSON string.
         """
         system_prompt = (
             "You are an expert productivity assistant adhering to Getting Things Done (GTD) principles. "
             "Your task is to review the following memos and brain dumps and generate a clean, actionable "
             "to-do list. For items that are actionable, write them as clear tasks. For items that are not "
-            "immediately actionable, create tasks for clarification. Output only the task list."
+            "immediately actionable, create tasks for clarification. "
+            "Your output must be strictly in JSON format matching the following schema:\n"
+            "{\n"
+            "  \"tasks\": [\n"
+            "    {\"title\": \"Task Title\", \"description\": \"Task detailed description here if any\"}\n"
+            "  ]\n"
+            "}"
         )
         
         user_prompt = "Here are the notes:\n\n"
         for i, note in enumerate(notes, 1):
             user_prompt += f"--- Note {i} ---\n{note}\n\n"
             
-        response = ollama.chat(
-            model=self.modelName,
-            messages=[
-                {'role': 'system', 'content': system_prompt},
-                {'role': 'user', 'content': user_prompt}
-            ]
-        )
-        
-        return response.get('message', {}).get('content', '')
+        try:
+            response = ollama.chat(
+                model=self.modelName,
+                messages=[
+                    {'role': 'system', 'content': system_prompt},
+                    {'role': 'user', 'content': user_prompt}
+                ],
+                format="json"
+            )
+            return response.get('message', {}).get('content', '{}')
+        except Exception:
+            return '{}'

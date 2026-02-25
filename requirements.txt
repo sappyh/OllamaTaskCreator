@@ -2,3 +2,6 @@ pytest
 markdown
 ollama
 pytest-asyncio
+requests
+pytest-cov
+requests-mock
