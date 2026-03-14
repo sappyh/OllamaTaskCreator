@@ -1,11 +1,18 @@
 import json
-from src.obsidianInterface import ObsidianInterface
-from src.ollamaWrapper import OllamaWrapper
-from src.vikunjaInterface import VikunjaInterface
+from orchestrator.src.obsidianInterface import ObsidianInterface
+from orchestrator.src.ollamaWrapper import OllamaWrapper
+from orchestrator.src.vikunjaInterface import VikunjaInterface
+
+from typing import Optional
 
 class MainOrchestrator:
-    def __init__(self, vault_path: str, ollama_model: str, vikunja_url: str, vikunja_token: str, vikunja_pid: int):
-        self.obsidian = ObsidianInterface(vault_path)
+    def __init__(self, vault_path: str, ollama_model: str, vikunja_url: str, vikunja_token: str, vikunja_pid: int, webapp_url: Optional[str] = None):
+        self.vault_path = vault_path
+        if webapp_url:
+            from orchestrator.src.webappInterface import WebappNotesSource
+            self.notes_source = WebappNotesSource(base_url=webapp_url, vault_path=vault_path)
+        else:
+            self.notes_source = ObsidianInterface(vault_path)
         self.ollama_wrapper = OllamaWrapper(modelName=ollama_model)
         self.vikunja = VikunjaInterface(base_url=vikunja_url, api_token=vikunja_token)
         self.project_id = vikunja_pid
@@ -17,12 +24,12 @@ class MainOrchestrator:
         print(f"[*] Ensuring Ollama model '{self.ollama_wrapper.modelName}' is pulled (this may take a while if missing)...")
         await self.ollama_wrapper.initModel()
         
-        # 2. Reading Obsidian files
-        print(f"[*] Reading files from Obsidian vault at {self.obsidian.path}")
-        files = self.obsidian.listAllFiles()
+        # 2. Reading Vault files
+        print(f"[*] Reading files from vault at {self.vault_path}")
+        files = self.notes_source.listAllFiles()
         notes_content = []
         for f in files:
-            content = self.obsidian.retrieveContentFromFile(f)
+            content = self.notes_source.retrieveContentFromFile(f)
             if content and content != NameError:
                 notes_content.append(content)
                 

@@ -3,13 +3,22 @@ import shutil
 import asyncio
 import json
 import requests_mock
-from src.main import MainOrchestrator
-from src.vikunjaInterface import VikunjaInterface
+import subprocess
+from orchestrator.src.main import MainOrchestrator
+from orchestrator.src.vikunjaInterface import VikunjaInterface
+from webapp.src.main import app
 
 async def run_demo():
     print("=======================================")
     print(" Ollama Task Creator End-to-End Demo")
     print("=======================================\n")
+    
+    # Set up isolated base directory so it doesn't pollute the actual ~/.OllamaCreator tracker GUI!
+    test_base_dir = "./test_demo_base_dir"
+    os.environ["OLLAMA_CREATOR_BASE_DIR"] = test_base_dir
+    if os.path.exists(test_base_dir):
+        shutil.rmtree(test_base_dir)
+    os.makedirs(test_base_dir)
     
     # Setup dummy Obsidian directory
     dummy_vault = "./dummy_vault"
@@ -29,7 +38,7 @@ async def run_demo():
     # so we don't have to spin up a Docker container just to show it works!
     print("[*] Intercepting all Vikunja requests with requests-mock (Mocking Server)...\n")
     
-    with requests_mock.Mocker() as m:
+    with requests_mock.Mocker(real_http=True) as m:
         # Mock connection success
         m.get('http://mock-vikunja.local/api/v1/info', json={"version": "1.0"})
         
@@ -44,6 +53,14 @@ async def run_demo():
             
         m.put('http://mock-vikunja.local/api/v1/projects/42/tasks', json=task_creation_callback)
         
+        # Start FastAPI app in a background subprocess to avoid asyncio deadlock with synchronous requests
+        server_process = subprocess.Popen(
+            ["venv/bin/uvicorn", "webapp.src.main:app", "--host", "127.0.0.1", "--port", "8000", "--log-level", "warning"]
+        )
+        
+        # Give the server a moment to start
+        await asyncio.sleep(2)
+        
         # Initialize Orchestrator using tinyllama for the demo so it is fast!
         # In production this would use `ministral-3` or `qwen2.5-coder` etc.
         # We will use 'tinyllama' or 'qwen:0.5b' to make the demo run smoothly if not downloaded yet.
@@ -52,11 +69,16 @@ async def run_demo():
             ollama_model="tinyllama", # Use tinyllama for demo speed
             vikunja_url="http://mock-vikunja.local", 
             vikunja_token="super-secret-demo-token", 
-            vikunja_pid=42
+            vikunja_pid=42,
+            webapp_url="http://127.0.0.1:8000"
         )
         
         # Run orchestrator
         await orchestrator.run()
+        
+        # Stop background server
+        server_process.terminate()
+        server_process.wait()
         
         print("\n=======================================")
         print("          Demo Verification")

@@ -2,7 +2,7 @@ import asyncio
 import time
 import json
 import sys
-from src.ollamaWrapper import OllamaWrapper
+from orchestrator.src.ollamaWrapper import OllamaWrapper
 
 # List of models < 8B parameters to benchmark
 MODELS = [

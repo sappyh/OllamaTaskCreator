@@ -11,3 +11,10 @@ venv/*
 
 #Logs
 *.log
+
+# Tests
+tests/
+orchestrator/tests/
+webapp/tests/
+test_demo_base_dir/
+.pytest_cache/

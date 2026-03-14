@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama Task Creator - Vaults</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="dark-theme">
+    <div id="app-container">
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar">
+            <div class="sidebar-header">
+                <h2>Vaults</h2>
+                <button id="new-vault-btn" class="icon-btn" title="Create New Vault">+</button>
+            </div>
+            
+            <div id="vault-list" class="nav-list">
+                <!-- Vaults populated here via JS -->
+            </div>
+
+            <div class="sidebar-header mt-auto">
+                <h2>Notes</h2>
+                <button id="new-note-btn" class="icon-btn" title="Create New Note" disabled>+</button>
+            </div>
+            
+            <div id="note-list" class="nav-list">
+                <!-- Notes populated here via JS -->
+                <div class="empty-state-text">Select a vault first</div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+            <!-- Header bar -->
+            <header id="top-bar">
+                <div id="current-context">
+                    <span id="current-vault-label" class="badge hidden">No Vault Selected</span>
+                    <h1 id="current-note-title">Welcome</h1>
+                </div>
+                <div id="note-actions" class="hidden">
+                    <button id="save-note-btn" class="primary-btn">Save Note</button>
+                    <button id="delete-note-btn" class="danger-btn">Delete</button>
+                </div>
+            </header>
+
+            <!-- Editor / Preview Area -->
+            <div id="editor-container" class="hidden">
+                <div class="pane editor-pane">
+                    <textarea id="markdown-editor" placeholder="Start typing your markdown..."></textarea>
+                </div>
+                <div class="pane preview-pane">
+                    <div id="markdown-preview" class="markdown-body"></div>
+                </div>
+            </div>
+            
+            <!-- Empty State -->
+            <div id="empty-state" class="empty-state">
+                <div class="empty-icon">📁</div>
+                <h3>Select a Vault or Note</h3>
+                <p>Choose an existing vault from the sidebar or create a new one to get started.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="new-vault-modal" class="modal hidden">
+        <div class="modal-content glass">
+            <h3>Create New Vault</h3>
+            <p>Enter the absolute or relative path for the new vault directory.</p>
+            <input type="text" id="new-vault-input" placeholder="e.g. ./my_vault">
+            <div class="modal-actions">
+                <button id="cancel-vault-btn" class="secondary-btn">Cancel</button>
+                <button id="submit-vault-btn" class="primary-btn">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="new-note-modal" class="modal hidden">
+        <div class="modal-content glass">
+            <h3>Create New Note</h3>
+            <p>Enter the filename for your new markdown note.</p>
+            <input type="text" id="new-note-input" placeholder="e.g. meeting_notes.md">
+            <div class="modal-actions">
+                <button id="cancel-note-btn" class="secondary-btn">Cancel</button>
+                <button id="submit-note-btn" class="primary-btn">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>

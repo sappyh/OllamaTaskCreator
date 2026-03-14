@@ -37,3 +37,5 @@ class BaseTaskTarget(ABC):
         Creates a core actionable task in the target location/project.
         """
         pass
+
+

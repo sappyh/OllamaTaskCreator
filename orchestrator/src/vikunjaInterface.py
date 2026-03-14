@@ -1,5 +1,5 @@
 import requests
-from src.interfaces import BaseTaskTarget
+from orchestrator.src.interfaces import BaseTaskTarget
 
 class VikunjaInterface(BaseTaskTarget):
     def __init__(self, base_url: str, api_token: str):

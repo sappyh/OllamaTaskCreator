@@ -5,3 +5,6 @@ pytest-asyncio
 requests
 pytest-cov
 requests-mock
+fastapi
+uvicorn
+httpx
