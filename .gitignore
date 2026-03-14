@@ -12,9 +12,6 @@ venv/*
 #Logs
 *.log
 
-# Tests
-tests/
-orchestrator/tests/
-webapp/tests/
+# Test artifacts
 test_demo_base_dir/
 .pytest_cache/
