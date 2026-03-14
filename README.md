@@ -4,28 +4,26 @@ OllamaTaskCreator is a self-hosted, privacy-first automation pipeline that lever
 
 ## Architecture
 
-The project is designed with a **Generic Interface Architecture** to ensure that data sources, AI processing, and task destinations remain fully decoupled and horizontally scalable.
+The project is designed with a **Decoupled Architecture** to ensure that data sources, AI processing, and task destinations remain cleanly separated. The repository consists of two distinct components that operate independently:
 
-### Core Components
+### 1. Webapp Component (`webapp/`)
+A standalone directory providing a web-based GUI and REST API backend for managing your Markdown notes locally.
+- **Backend:** A FastAPI server (`webapp.src.main:app`) managing local file I/O safely via Pydantic schemas. 
+- **Frontend:** A raw Vanilla JS + CSS implementation (`webapp/src/static/`) providing a sleek user experience for editing notes, managing vaults, and visualizing your knowledge graph.
+- **Interface:** The webapp implements the `BaseVaultManager` interface to structure its operations consistently.
 
+### 2. Orchestrator Component (`orchestrator/`)
+The background intelligence layer that reads your notes, parses actionable items, and syncs them. It operates entirely independently from the web layer.
+
+#### Core Integrations
 1. **Source Interface (`BaseNotesSource`)**
-   - **Responsibility:** Ingest text-based notes.
-   - **Current Implementation:** `ObsidianInterface`
-   - **Description:** A concrete implementation that recursively scans a local directory (e.g., an Obsidian Vault), validates markdown files, and pulls string content. Inheriting the `BaseNotesSource` allows for rapid drop-in replacements like `NotionInterface` or `GoogleDocsInterface` in the future.
-
+   - **Implementations:** `ObsidianInterface` (Local disk reads), `WebappNotesSource` (HTTP calls to the Webapp component APIs).
 2. **AI Processing (`OllamaWrapper`)**
-   - **Responsibility:** Use Generative AI logic to identify GTD tasks, extract implicit dependencies, and format output.
-   - **Current Implementation:** Native `ollama` library bindings.
-   - **Description:** Uses offline LLMs under the 8B parameter threshold (default: `llama3.1:8b`) to securely read brain dumps without transmitting personal data over the internet. The wrapper strictly commands JSON syntax returns to ensure programmatic integrity. It also initializes asynchronously so inference limits are cleanly respected.
-
+   - **Responsibility:** Use Generative AI logic to identify GTD tasks, extract implicit dependencies, and format output into machine-readable JSON payloads. Uses default local models like `llama3.1:8b`.
 3. **Target Interface (`BaseTaskTarget`)**
-   - **Responsibility:** Sync structured payload elements to external applications.
-   - **Current Implementation:** `VikunjaInterface`
-   - **Description:** A concrete implementation hitting the Vikunja REST API `/projects/{id}/tasks` endpoint. Like the source layer, implementing `BaseTaskTarget` allows developers to easily swap out Vikunja for apps like `TodoistInterface` or `JiraInterface` using identical function signatures.
-
-4. **Orchestrator (`MainOrchestrator`)**
-   - **Responsibility:** The centralized control loop tying the workflow together.
-   - **Description:** Instantiates the source, initializes the selected Ollama model securely, loops through the ingested documents, captures the model's generated JSON payload, evaluates connectivity with the target, and bridges the payload across the pipeline.
+   - **Implementations:** `VikunjaInterface` (Syncing structured payloads to the Vikunja Task REST API).
+4. **Orchestrator Control Loop (`MainOrchestrator`)**
+   - **Responsibility:** The centralized control loop tying the workflow together. Intakes notes, calls the LLM, parses the JSON payload, and bridges data to the Target API.
 
 ## Getting Started
 
