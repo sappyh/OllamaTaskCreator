@@ -4,26 +4,23 @@ OllamaTaskCreator is a self-hosted, privacy-first automation pipeline that lever
 
 ## Architecture
 
-The project is designed with a **Decoupled Architecture** to ensure that data sources, AI processing, and task destinations remain cleanly separated. The repository consists of two distinct components that operate independently:
+The project is designed with a **Decoupled Architecture** to ensure that data sources, AI processing, and task destinations remain cleanly separated. The repository consists of three distinct components that interface via **ZeroMQ (ZMQ)** and **Protocol Buffers**:
 
 ### 1. Webapp Component (`webapp/`)
-A standalone directory providing a web-based GUI and REST API backend for managing your Markdown notes locally.
+Acts as the primary application server providing a web-based GUI and REST API backend.
 - **Backend:** A FastAPI server (`webapp.src.main:app`) managing local file I/O safely via Pydantic schemas. 
-- **Frontend:** A raw Vanilla JS + CSS implementation (`webapp/src/static/`) providing a sleek user experience for editing notes, managing vaults, and visualizing your knowledge graph.
-- **Interface:** The webapp implements the `BaseVaultManager` interface to structure its operations consistently.
+- **ZMQ Client:** It runs a persistent `WebappCommsClient` to listen to background Orchestrator status heartbeats and to trigger task generation (`POST /orchestrator/generate`).
 
 ### 2. Orchestrator Component (`orchestrator/`)
-The background intelligence layer that reads your notes, parses actionable items, and syncs them. It operates entirely independently from the web layer.
+The background intelligence worker that processes tasks asynchronously. 
+- **ZMQ Server:** Sits idle running the `OrchestratorCommsServer` PULL socket, waiting for commands from the Webapp while emitting PUSH heartbeats.
+- **AI Processing (`OllamaWrapper`):** Uses Generative AI logic to identify GTD tasks and format output into machine-readable JSON payloads. Uses default local models like `llama3.1:8b`.
+- **Target Interface (`VikunjaInterface`):** Syncs structured payloads to the Vikunja Task REST API.
 
-#### Core Integrations
-1. **Source Interface (`BaseNotesSource`)**
-   - **Implementations:** `ObsidianInterface` (Local disk reads), `WebappNotesSource` (HTTP calls to the Webapp component APIs).
-2. **AI Processing (`OllamaWrapper`)**
-   - **Responsibility:** Use Generative AI logic to identify GTD tasks, extract implicit dependencies, and format output into machine-readable JSON payloads. Uses default local models like `llama3.1:8b`.
-3. **Target Interface (`BaseTaskTarget`)**
-   - **Implementations:** `VikunjaInterface` (Syncing structured payloads to the Vikunja Task REST API).
-4. **Orchestrator Control Loop (`MainOrchestrator`)**
-   - **Responsibility:** The centralized control loop tying the workflow together. Intakes notes, calls the LLM, parses the JSON payload, and bridges data to the Target API.
+### 3. Common Component (`common/`)
+The shared interface schemas ensuring the two components can communicate safely.
+- **Protobuf Schemas:** Contains `messages.proto` (and compiled `messages_pb2.py`) which explicitly define `OrchestratorCommand` and `OrchestratorStatus`, leveraging strict Enums like `StatusType.PROCESSING`.
+- **Integration Tests:** Houses cross-component testing suites testing the isolated Comms abstraction layers (`test_zmq_interface.py`).
 
 ## Getting Started
 

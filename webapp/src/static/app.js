@@ -19,11 +19,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const markdownEditor = document.getElementById('markdown-editor');
     const markdownPreview = document.getElementById('markdown-preview');
     
-    // Buttons
     const newVaultBtn = document.getElementById('new-vault-btn');
     const newNoteBtn = document.getElementById('new-note-btn');
     const saveNoteBtn = document.getElementById('save-note-btn');
     const deleteNoteBtn = document.getElementById('delete-note-btn');
+    const orchestratorSyncBtn = document.getElementById('orchestrator-sync-btn');
+    const orchestratorStatusText = document.getElementById('orchestrator-status-text');
+    const orchestratorStatusDot = orchestratorSyncBtn.querySelector('.status-dot');
     
     // Modals
     const newVaultModal = document.getElementById('new-vault-modal');
@@ -60,6 +62,52 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (err) {
             console.error('Failed to fetch notes:', err);
+        }
+    }
+    
+    async function pollOrchestratorStatus() {
+        try {
+            const res = await fetch('/orchestrator/status');
+            if (res.ok) {
+                const state = await res.json();
+                updateOrchestratorUI(state);
+            } else {
+                updateOrchestratorUI({ is_connected: false, current_status: "Error" });
+            }
+        } catch (err) {
+            console.error('Failed to fetch orchestrator status:', err);
+            updateOrchestratorUI({ is_connected: false, current_status: "Disconnected" });
+        }
+    }
+    
+    async function triggerOrchestratorGenerate() {
+        if (!currentVault) {
+            alert("No vault selected to process!");
+            return;
+        }
+        
+        try {
+            orchestratorSyncBtn.disabled = true;
+            const originalText = orchestratorStatusText.textContent;
+            orchestratorStatusText.textContent = "Initiating...";
+            
+            const res = await fetch('/orchestrator/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ vault_path: currentVault })
+            });
+            
+            if (res.ok) {
+                orchestratorStatusText.textContent = "Sent!";
+            } else {
+                const data = await res.json();
+                alert(`Error: ${data.detail || 'Could not initiate task sync'}`);
+                orchestratorStatusText.textContent = originalText;
+                orchestratorSyncBtn.disabled = false;
+            }
+        } catch (err) {
+            console.error('Failed to trigger task generation:', err);
+            orchestratorSyncBtn.disabled = false;
         }
     }
 
@@ -266,6 +314,37 @@ document.addEventListener('DOMContentLoaded', () => {
         markdownPreview.innerHTML = cleanHtml;
     }
 
+    function updateOrchestratorUI(state) {
+        orchestratorStatusDot.className = 'status-dot'; // reset
+        
+        if (!state.is_connected) {
+            orchestratorStatusDot.classList.add('disconnected');
+            orchestratorStatusText.textContent = 'Disconnected';
+            orchestratorSyncBtn.disabled = true;
+            orchestratorSyncBtn.title = "Start the Orchestrator service to sync tasks";
+            return;
+        }
+        
+        if (state.current_status === "Processing") {
+            orchestratorStatusDot.classList.add('processing');
+            orchestratorStatusText.textContent = 'Syncing Tasks...';
+            orchestratorSyncBtn.disabled = true;
+            orchestratorSyncBtn.title = "Tasks are currently being pushed to Vikunja";
+        } else {
+            orchestratorStatusDot.classList.add('connected');
+            orchestratorStatusText.textContent = 'Sync Tasks';
+            
+            // Only enable button if a vault is actually selected
+            if (currentVault) {
+                orchestratorSyncBtn.disabled = false;
+                orchestratorSyncBtn.title = "Process all notes in this vault via Ollama";
+            } else {
+                orchestratorSyncBtn.disabled = true;
+                orchestratorSyncBtn.title = "Select a vault first";
+            }
+        }
+    }
+
     function openModal(modalEl, inputEl) {
         modalEl.classList.remove('hidden');
         if (inputEl) {
@@ -303,6 +382,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     saveNoteBtn.addEventListener('click', saveNote);
     deleteNoteBtn.addEventListener('click', deleteNote);
+    orchestratorSyncBtn.addEventListener('click', triggerOrchestratorGenerate);
 
     markdownEditor.addEventListener('input', () => {
         renderMarkdown();
@@ -316,4 +396,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Init ---
     fetchVaults();
+    pollOrchestratorStatus();
+    setInterval(pollOrchestratorStatus, 2000); // Poll ZMQ bridge every 2s
 });

@@ -2,6 +2,7 @@ import os
 import shutil
 import asyncio
 import json
+import requests
 import requests_mock
 import subprocess
 from orchestrator.src.main import MainOrchestrator
@@ -65,7 +66,6 @@ async def run_demo():
         # In production this would use `ministral-3` or `qwen2.5-coder` etc.
         # We will use 'tinyllama' or 'qwen:0.5b' to make the demo run smoothly if not downloaded yet.
         orchestrator = MainOrchestrator(
-            vault_path=dummy_vault,
             ollama_model="tinyllama", # Use tinyllama for demo speed
             vikunja_url="http://mock-vikunja.local", 
             vikunja_token="super-secret-demo-token", 
@@ -73,10 +73,28 @@ async def run_demo():
             webapp_url="http://127.0.0.1:8000"
         )
         
-        # Run orchestrator
-        await orchestrator.run()
+        # Start Orchestrator ZMQ loop in background
+        orchestrator_task = asyncio.create_task(orchestrator.run())
         
-        # Stop background server
+        # Give ZMQ sockets time to bind and heartbeat
+        print("[*] Waiting for Orchestrator to heartbeat to Webapp over ZMQ...")
+        await asyncio.sleep(3)
+        
+        status_resp = requests.get("http://127.0.0.1:8000/orchestrator/status")
+        print(f"[*] Webapp reports Orchestrator status: {status_resp.json()}")
+        
+        print(f"[*] Triggering workflow via Webapp POST request over ZMQ...")
+        requests.post("http://127.0.0.1:8000/orchestrator/generate", json={"vault_path": dummy_vault})
+        
+        # Let the orchestrator process (Ollama takes a few seconds)
+        print("[*] Waiting for LLM extraction and Vikunja syncing...")
+        for _ in range(30):
+            if len(posted_tasks) > 0:
+                break
+            await asyncio.sleep(1)
+        
+        # Stop everything
+        orchestrator_task.cancel()
         server_process.terminate()
         server_process.wait()
         

@@ -49,4 +49,4 @@ jobs:
           
       - name: Run Tests with Pytest
         run: |
-          python -m pytest orchestrator/tests/ webapp/tests/ --cov=orchestrator --cov=webapp --cov-report=term-missing
+          python -m pytest common/tests/ orchestrator/tests/ webapp/tests/ --cov=common --cov=orchestrator --cov=webapp --cov-report=term-missing

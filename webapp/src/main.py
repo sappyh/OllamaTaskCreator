@@ -7,10 +7,28 @@ import json
 # Add the project root to sys.path to allow running directly via `python src/webapp/main.py`
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
+import asyncio
+import zmq
+import zmq.asyncio
 from pathlib import Path
 from typing import List, Optional
+from common.src import messages_pb2
+
+from webapp.src.comms import WebappCommsClient
 
 app = FastAPI(title="Vault Notes API", description="API for managing Markdown notes in local directories (vaults)")
+
+# Initialize the Webapp ZMQ Client
+comms_client = WebappCommsClient()
+
+@app.on_event("startup")
+async def startup_event():
+    # Spawn background listener
+    comms_client.start_listening()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    comms_client.stop_listening()
 
 # Resolve the absolute path to the static directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -239,6 +257,25 @@ def delete_note(filename: str, vault_path: str):
         return vault_manager.delete_note(vault_path, filename)
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/orchestrator/status")
+def get_orchestrator_status():
+    return comms_client.get_status()
+
+class GenerateTasksRequest(BaseModel):
+    vault_path: str
+
+@app.post("/orchestrator/generate")
+async def generate_tasks(request: GenerateTasksRequest):
+    """Pushes a GENERATE_TASKS command to the orchestrator via ZMQ."""
+    if not comms_client.get_status().get("is_connected"):
+        raise HTTPException(status_code=503, detail="Orchestrator is not connected")
+        
+    try:
+        comms_client.send_generate_tasks(request.vault_path)
+        return {"status": "success", "message": "Task generation initiated"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
