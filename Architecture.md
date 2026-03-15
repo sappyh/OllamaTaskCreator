@@ -15,67 +15,78 @@ The project follows a **Decoupled Engine-Hub** pattern to solve specific hardwar
 
 ```mermaid
 classDiagram
-    namespace Common {
-        class OrchestratorCommand {
-            +CommandType type
-            +string vault_path
+    class OrchestratorCommand {
+        +type
+        +vault_path
+    }
+    class OrchestratorStatus {
+        +is_alive
+        +current_status
+    }
+
+    namespace WebApp_RaspberryPi {
+        class BaseVaultManager {
+            <<Interface>>
+            +create_vault()
+            +list_vaults()
+            +get_tasks()
         }
-        class OrchestratorStatus {
-            +bool is_alive
-            +StatusType current_status
+        class LocalVaultManager {
+            +base_dir
+            +upsert_task()
+        }
+        class WebappCommsClient {
+            +state
+            +send_generate_tasks()
         }
     }
 
-    namespace WebApp {
-        class WebappCommsClient {
-            +Dict state
-            +start_listening()
-            +send_generate_tasks(vault_path)
+    namespace Orchestrator_PC {
+        class MainOrchestrator {
+            +ollama
+            +deduplicator
+            +target
+            -process_vault()
         }
         class WebappNotesSource {
-            +string vault_path
+            +base_url
             +listAllFiles()
-            +retrieveContentFromFile(file)
-        }
-    }
-
-    namespace Orchestrator {
-        class MainOrchestrator {
-            +OllamaWrapper ollama
-            +TaskDeduplicator deduplicator
-            +WebappTaskTarget target
-            -process_vault(path)
+            +retrieveContent()
         }
         class OllamaWrapper {
-            +string modelName
-            +generateTasksFromNotes(notes)
-            +getEmbedding(text)
+            +generateTasks()
+            +getEmbedding()
         }
         class TaskDeduplicator {
-            +float threshold
-            +prepare_existing_tasks(tasks)
-            +find_duplicate(task)
+            +threshold
+            +find_duplicate()
         }
         class WebappTaskTarget {
-            +string base_url
-            +fetch_tasks(vault)
-            +create_task(task_data)
+            +fetch_tasks()
+            +create_task()
         }
     }
 
-    WebappCommsClient ..> OrchestratorCommand : Sends
-    MainOrchestrator ..> OrchestratorStatus : Pushes heartbeats
-    MainOrchestrator --> OllamaWrapper : Uses for AI
-    MainOrchestrator --> TaskDeduplicator : Filters duplicates
-    MainOrchestrator --> WebappTaskTarget : Pushes tasks
-    TaskDeduplicator --> OllamaWrapper : Requests Embeddings
+    %% Control Channel (ZMQ/Protobuf)
+    WebappCommsClient ..> OrchestratorCommand : ZMQ PUSH (Generate)
+    MainOrchestrator ..> OrchestratorStatus : ZMQ PUSH (Heartbeat)
+
+    %% Data Flow
+    MainOrchestrator --> WebappNotesSource : Reads Notes
+    MainOrchestrator --> OllamaWrapper : AI Extraction
+    MainOrchestrator --> TaskDeduplicator : Semantic Filter
+    MainOrchestrator --> WebappTaskTarget : Sync Tasks
+    
+    LocalVaultManager --|> BaseVaultManager : Implements
+    WebappNotesSource --|> BaseNotesSource : Implements (Proxy)
+    TaskDeduplicator --> OllamaWrapper : Requests Embeds
 ```
 
 ## Communication Flow
 
 1.  **Web App** triggers a `GENERATE_TASKS` command via ZMQ PUSH.
 2.  **Orchestrator** receives the command and switches status to `PROCESSING`.
-3.  **Orchestrator** fetches notes content from the **Web App** REST API.
+3.  **Orchestrator** (via `WebappNotesSource`) fetches notes content from the **Web App** REST API.
 4.  **Ollama** processes the text into a structured JSON task list.
 5.  **TaskDeduplicator** filters the list against currently existing tasks in the Web App.
 6.  New tasks are pushed to the **Web App** via REST.
