@@ -460,10 +460,31 @@ button {
     display: none;
 }
 
-/* Ensure interactive items respond to touch on iOS */
+/* Ensure interactive items respond to touch on iOS and provide explicit interaction feedback */
 .nav-item, .vault-item, .note-item, .tag-item, .task-list-item, .view-tab, button {
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+}
+
+.nav-item:focus-visible,
+.vault-item:focus-visible,
+.note-item:focus-visible,
+.tag-item:focus-visible,
+.task-list-item:focus-visible,
+.view-tab:focus-visible,
+button:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+}
+
+.nav-item:active,
+.vault-item:active,
+.note-item:active,
+.tag-item:active,
+.task-list-item:active,
+.view-tab:active,
+button:active {
+    background-color: var(--bg-surface-hover);
 }
 
 .modal-content.glass {
