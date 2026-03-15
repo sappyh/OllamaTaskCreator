@@ -691,7 +691,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleSidebar);
 
     window.addEventListener('resize', () => {
+        const wasMobile = isMobile;
         isMobile = window.innerWidth <= 768;
+        // When transitioning from mobile to desktop, ensure mobile-only sidebar state is cleared
+        if (wasMobile && !isMobile) {
+            if (typeof sidebar !== 'undefined' && sidebar) {
+                sidebar.classList.remove('open');
+            }
+            if (sidebarOverlay) {
+                sidebarOverlay.classList.remove('active');
+            }
+            if (menuToggle) {
+                menuToggle.classList.remove('active');
+            }
+            document.body.classList.remove('sidebar-open');
+        }
     });
 
     if (markdownEditor) {
