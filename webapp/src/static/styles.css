@@ -42,6 +42,7 @@ body {
 #app-container {
     display: flex;
     height: 100vh;
+    height: 100dvh;
     width: 100vw;
 }
 
@@ -457,6 +458,12 @@ button {
 /* Modals should be hidden by default using display: none if possible, or opacity: 0 with pointer-events: none */
 .modal.hidden {
     display: none;
+}
+
+/* Ensure interactive items respond to touch on iOS */
+.nav-item, .vault-item, .note-item, .tag-item, .task-list-item, .view-tab, button {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .modal-content.glass {
@@ -925,6 +932,7 @@ button {
         right: 0;
         bottom: 0;
         background: rgba(0, 0, 0, 0.5);
+        -webkit-backdrop-filter: blur(4px);
         backdrop-filter: blur(4px);
         z-index: 1000;
         display: block !important;
@@ -956,6 +964,7 @@ button {
     #main-content {
         height: auto;
         min-height: 100vh;
+        min-height: 100dvh;
     }
 
     #current-context {
