@@ -24,11 +24,11 @@ comms_client = WebappCommsClient()
 @app.on_event("startup")
 async def startup_event():
     # Spawn background listener
-    comms_client.start_listening()
+    await comms_client.start_listening()
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    comms_client.stop_listening()
+    await comms_client.stop_listening()
 
 # Resolve the absolute path to the static directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -274,7 +274,7 @@ async def generate_tasks(request: GenerateTasksRequest):
         raise HTTPException(status_code=503, detail="Orchestrator is not connected")
         
     try:
-        comms_client.send_generate_tasks(request.vault_path)
+        await comms_client.send_generate_tasks(request.vault_path)
         return {"status": "success", "message": "Task generation initiated"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

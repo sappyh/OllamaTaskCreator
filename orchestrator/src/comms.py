@@ -30,6 +30,7 @@ class OrchestratorCommsServer:
         """Continuously push status updates."""
         try:
             while True:
+                await asyncio.sleep(2)
                 try:
                     status = messages_pb2.OrchestratorStatus()
                     status.is_alive = True
@@ -42,7 +43,6 @@ class OrchestratorCommsServer:
                         await self.push_socket.send(status.SerializeToString())
                 except Exception as e:
                     print(f"[!] Comms heartbeat error: {e}")
-                await asyncio.sleep(2)
         except asyncio.CancelledError:
             pass
 
@@ -70,29 +70,63 @@ class OrchestratorCommsServer:
         except Exception as e:
             print(f"[!] Error in comms listen loop: {e}")
 
-    def start(self):
+    async def send_disconnect(self):
+        """Sends a disconnect message as a status update to the webapp."""
+        status = messages_pb2.OrchestratorStatus()
+        status.is_alive = False
+        status.current_status = messages_pb2.OrchestratorStatus.UNKNOWN
+        if self.push_socket:
+            try:
+                await self.push_socket.send(status.SerializeToString())
+            except Exception as e:
+                print(f"[!] Error sending disconnect message: {e}")
+    
+    async def send_connected(self):
+        """Sends a connected message as a status update to the webapp."""
+        status = messages_pb2.OrchestratorStatus()
+        status.is_alive = True
+        status.current_status = messages_pb2.OrchestratorStatus.IDLE
+        if self.push_socket:
+            try:
+                await self.push_socket.send(status.SerializeToString())
+            except Exception as e:
+                print(f"[!] Error sending connected message: {e}")
+
+    async def start(self):
         """Starts the sockets and background loops."""
         self.push_socket = self.zmq_ctx.socket(zmq.PUSH)
         self.push_socket.connect(self.status_url)
         
         self.pull_socket = self.zmq_ctx.socket(zmq.PULL)
-        self.pull_socket.bind(self.command_url)
+        self.pull_socket.connect(self.command_url)
         
         self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
         self._listen_task = asyncio.create_task(self._listen_loop())
+
+        ## Send connected message
+        await self.send_connected()
         
-    def stop(self):
+    async def stop(self):
         """Stops the loops and closes sockets."""
         if self._heartbeat_task:
             self._heartbeat_task.cancel()
         if self._listen_task:
             self._listen_task.cancel()
+
+        ## Send disconnect message
+        await self.send_disconnect()
             
         if self.push_socket:
-            self.push_socket.setsockopt(zmq.LINGER, 0)
+            self.push_socket.setsockopt(zmq.LINGER, 1000)
             self.push_socket.close()
         if self.pull_socket:
-            self.pull_socket.setsockopt(zmq.LINGER, 0)
+            self.pull_socket.setsockopt(zmq.LINGER, 1000)
             self.pull_socket.close()
-            
-        self.zmq_ctx.term()
+
+    def __del__(self):
+        """Ensure the ZMQ context is terminated when the object is destroyed."""
+        try:
+            if hasattr(self, 'zmq_ctx'):
+                self.zmq_ctx.term()
+        except Exception:
+            pass # Avoid noise during process teardown

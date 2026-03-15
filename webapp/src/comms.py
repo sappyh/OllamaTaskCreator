@@ -52,34 +52,39 @@ class WebappCommsClient:
             print(f"[!] Error in comms status listener: {e}")
             self.state["is_connected"] = False
 
-    def start_listening(self):
+    async def start_listening(self):
         """Starts the PULL socket to listen for statuses."""
         self.pull_socket = self.zmq_ctx.socket(zmq.PULL)
         self.pull_socket.bind(self.status_url)
         self._listen_task = asyncio.create_task(self._status_listener_loop())
 
-    def stop_listening(self):
+    async def stop_listening(self):
         """Stops the listening loop and closes the socket."""
         if self._listen_task:
             self._listen_task.cancel()
         if self.pull_socket:
-            self.pull_socket.setsockopt(zmq.LINGER, 0)
+            self.pull_socket.setsockopt(zmq.LINGER, 1000)
             self.pull_socket.close()
-        self.zmq_ctx.term()
 
-    def send_generate_tasks(self, vault_path: str):
-        """Synchronously pushes a command to the Orchestrator."""
-        # Create a non-async synchronous socket just to push the single payload
-        ctx = zmq.Context.instance()
-        push_socket = ctx.socket(zmq.PUSH)
-        push_socket.connect(self.command_url)
+    def __del__(self):
+        """Ensure the ZMQ context is terminated when the object is destroyed."""
+        try:
+            if hasattr(self, 'zmq_ctx'):
+                self.zmq_ctx.term()
+        except Exception:
+            pass # Avoid noise during process teardown
+
+    async def send_generate_tasks(self, vault_path: str):
+        """Asynchronously pushes a command to the Orchestrator."""
+        push_socket = self.zmq_ctx.socket(zmq.PUSH)
+        push_socket.bind(self.command_url)
         
         command = messages_pb2.OrchestratorCommand()
         command.type = messages_pb2.OrchestratorCommand.GENERATE_TASKS
         command.vault_path = vault_path
         
-        push_socket.send(command.SerializeToString())
-        push_socket.close()
+        await push_socket.send(command.SerializeToString())
+        push_socket.close(linger=100)
         
     def get_status(self) -> Dict[str, Any]:
         return self.state

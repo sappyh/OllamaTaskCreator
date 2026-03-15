@@ -83,14 +83,14 @@ class MainOrchestrator:
 
     async def run(self):
         print("[+] Starting Orchestrator ZMQ Worker Loop")
-        self.comms_server.start()
+        await self.comms_server.start()
         
         try:
             # Just keep the application alive, the comms background tasks handle everything
             while True:
                 await asyncio.sleep(60)
         except asyncio.CancelledError:
-            self.comms_server.stop()
+            await self.comms_server.stop()
 
 if __name__ == "__main__":
     # Example standalone execution footprint
