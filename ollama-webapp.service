@@ -5,12 +5,11 @@ After=network.target
 
 [Service]
 Type=simple
-User=%i
-WorkingDirectory=%h/OllamaTaskCreator
-ExecStart=%h/OllamaTaskCreator/venv/bin/python webapp/src/main.py
+User=[USER]
+WorkingDirectory=[HOME]/OllamaTaskCreator
+ExecStart=[HOME]/OllamaTaskCreator/venv/bin/python webapp/src/main.py
 Restart=on-failure
 RestartSec=5
-Environment=OLLAMA_CREATOR_BASE_DIR=%h/.OllamaCreator
 
 [Install]
 WantedBy=multi-user.target

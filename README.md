@@ -42,15 +42,17 @@ python webapp/src/main.py
 *The Web App will start on `http://0.0.0.0:8000`.*
 
 #### Auto-start on Boot (systemd)
+First update the `ollama-webapp.service` file with the correct path to your repository and USER name
+
 ```bash
 # Copy the service file and enable it for your user
-sudo cp ollama-webapp@.service /etc/systemd/system/
+sudo cp ollama-webapp.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable ollama-webapp@$USER
-sudo systemctl start ollama-webapp@$USER
+sudo systemctl enable ollama-webapp.service
+sudo systemctl start ollama-webapp.service
 
 # Check status
-sudo systemctl status ollama-webapp@$USER
+sudo systemctl status ollama-webapp.service
 ```
 > **Note**: The service assumes the repo is at `~/OllamaTaskCreator` with a `venv/` inside it.
 
