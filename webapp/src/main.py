@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 import asyncio
 import zmq
 import zmq.asyncio
+import shutil
 from pathlib import Path
 from typing import List, Optional
 from common.src import messages_pb2
@@ -62,6 +63,7 @@ class NoteCreateRequest(BaseModel):
     content: str
 
 from webapp.src.interfaces import BaseVaultManager
+from common.src.models import Task, TaskPriority
 
 class LocalVaultManager(BaseVaultManager):
     def __init__(self, base_dir: Optional[str] = None):
@@ -95,44 +97,86 @@ class LocalVaultManager(BaseVaultManager):
             self.tracked_vaults.append(vault_path)
             self._save_tracked_vaults()
 
-    def _get_vault_path(self, vault_path: str) -> Path:
+    def _resolve_vault_path(self, vault_path: str) -> Path:
+        """Centralized helper to always resolve vault paths relative to base_dir if not absolute."""
         path = Path(vault_path).expanduser()
+        if not path.is_absolute():
+            path = self.base_dir / vault_path
+        return path.resolve()
+
+    def _get_vault_path(self, vault_path: str) -> Path:
+        path = self._resolve_vault_path(vault_path)
         if not path.exists() or not path.is_dir():
-            raise FileNotFoundError("Vault not found or is not a directory")
+            raise FileNotFoundError(f"Vault not found at {path}")
         return path
 
     def create_vault(self, vault_path: str) -> dict:
-        path = Path(vault_path).expanduser()
+        path = self._resolve_vault_path(vault_path)
         path_str = str(path)
+        
         if path.exists():
             if path.is_dir():
                 self._track_vault(path_str)
                 return {"status": "success", "message": "Vault opened successfully", "path": path_str}
             else:
-                raise ValueError("Path exists but is not a directory")
+                raise ValueError(f"Path {path_str} exists but is not a directory")
                 
         try:
-            os.makedirs(path, exist_ok=True)
+            path.mkdir(parents=True, exist_ok=True)
             self._track_vault(path_str)
             return {"status": "success", "message": "Vault created successfully", "path": path_str}
         except Exception as e:
-            raise RuntimeError(f"Failed to create vault: {str(e)}")
+            raise RuntimeError(f"Failed to create vault directory at {path_str}: {str(e)}")
+
+    def delete_vault(self, vault_path: str) -> dict:
+        path = self._resolve_vault_path(vault_path)
+        # Safety check: Don't delete base_dir itself
+        if path == self.base_dir:
+            raise ValueError("Cannot delete the base directory")
+
+        if path.exists() and path.is_dir():
+            try:
+                shutil.rmtree(path)
+            except Exception as e:
+                raise RuntimeError(f"Failed to delete vault directory {path}: {str(e)}")
+        
+        # Always remove from tracking if exists
+        path_str = str(path)
+        if path_str in self.tracked_vaults:
+            self.tracked_vaults.remove(path_str)
+            self._save_tracked_vaults()
+            
+        return {"status": "success", "message": "Vault deleted successfully"}
 
     def list_vaults(self) -> List[str]:
-        # Filter out any that might have been deleted from disk manually
+        # 1. Automatic Discovery: Scan subdirectories of base_dir
+        try:
+            for item in self.base_dir.iterdir():
+                if item.is_dir() and not item.name.startswith('.'):
+                    path_str = str(item.resolve())
+                    if path_str not in self.tracked_vaults:
+                        self.tracked_vaults.append(path_str)
+        except Exception:
+            pass
+
+        # 2. Filter out any that might have been deleted from disk manually
+        # OR match the base directory (we don't want to show the root as a vault)
         valid_vaults = []
         changed = False
+        base_dir_resolved = self.base_dir.resolve()
+        
         for vp in self.tracked_vaults:
-            if Path(vp).exists() and Path(vp).is_dir():
-                valid_vaults.append(vp)
+            p = Path(vp).expanduser().resolve()
+            if p.exists() and p.is_dir() and p != base_dir_resolved:
+                valid_vaults.append(str(p))
             else:
                 changed = True
         
         if changed:
-            self.tracked_vaults = valid_vaults
+            self.tracked_vaults = list(set(valid_vaults)) # Remove duplicates
             self._save_tracked_vaults()
             
-        return valid_vaults
+        return self.tracked_vaults
 
     def list_notes(self, vault_path: str) -> List[str]:
         path = self._get_vault_path(vault_path)
@@ -200,6 +244,56 @@ class LocalVaultManager(BaseVaultManager):
         except Exception as e:
             raise RuntimeError(f"Failed to delete note: {str(e)}")
 
+    def _get_tasks_file(self, vault_path: str) -> Path:
+        return self._get_vault_path(vault_path) / "tasks.json"
+
+    def get_tasks(self, vault_path: str) -> List[dict]:
+        tasks_file = self._get_tasks_file(vault_path)
+        if not tasks_file.exists():
+            return []
+        try:
+            with open(tasks_file, "r") as f:
+                return json.load(f)
+        except Exception:
+            return []
+
+    def upsert_task(self, vault_path: str, task_data: dict) -> dict:
+        tasks = self.get_tasks(vault_path)
+        new_task = Task.from_dict(task_data)
+        
+        # Check if task already exists (by ID)
+        updated = False
+        for i, t in enumerate(tasks):
+            if t.get("id") == new_task.id:
+                tasks[i] = new_task.to_dict()
+                updated = True
+                break
+        
+        if not updated:
+            tasks.append(new_task.to_dict())
+            
+        try:
+            with open(self._get_tasks_file(vault_path), "w") as f:
+                json.dump(tasks, f, indent=4)
+            return {"status": "success", "task": new_task.to_dict()}
+        except Exception as e:
+            raise RuntimeError(f"Failed to save tasks: {str(e)}")
+
+    def delete_task(self, vault_path: str, task_id: str) -> dict:
+        tasks = self.get_tasks(vault_path)
+        original_len = len(tasks)
+        tasks = [t for t in tasks if t.get("id") != task_id]
+        
+        if len(tasks) == original_len:
+            raise FileNotFoundError("Task not found")
+            
+        try:
+            with open(self._get_tasks_file(vault_path), "w") as f:
+                json.dump(tasks, f, indent=4)
+            return {"status": "success"}
+        except Exception as e:
+            raise RuntimeError(f"Failed to delete task: {str(e)}")
+
 # Instantiate the interface
 vault_manager: BaseVaultManager = LocalVaultManager()
 
@@ -207,6 +301,15 @@ vault_manager: BaseVaultManager = LocalVaultManager()
 def create_vault(request: VaultRequest):
     try:
         return vault_manager.create_vault(request.vault_path)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/vault")
+def delete_vault(vault_path: str = Query(...)):
+    try:
+        return vault_manager.delete_vault(vault_path)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -261,6 +364,30 @@ def update_note(filename: str, request: NoteRequest):
 def delete_note(filename: str, vault_path: str):
     try:
         return vault_manager.delete_note(vault_path, filename)
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- Task API Endpoints ---
+@app.get("/vaults/tasks")
+def get_vault_tasks(vault_path: str = Query(...)):
+    try:
+        return vault_manager.get_tasks(vault_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/vaults/tasks")
+def upsert_vault_task(vault_path: str = Query(...), task: dict = Body(...)):
+    try:
+        return vault_manager.upsert_task(vault_path, task)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/vaults/tasks/{task_id}")
+def delete_vault_task(task_id: str, vault_path: str = Query(...)):
+    try:
+        return vault_manager.delete_task(vault_path, task_id)
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:

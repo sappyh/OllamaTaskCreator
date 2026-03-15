@@ -1,58 +1,71 @@
-# OllamaTaskCreator
+# OllamaTaskCreator 🚀
 
-OllamaTaskCreator is a self-hosted, privacy-first automation pipeline that leverages large language models (via Ollama) to continuously read your personal notes, extract actionable items using GTD (Getting Things Done) principles, and automatically sync them to a task management target.
+OllamaTaskCreator is a privacy-first, self-hosted AI task automation pipeline. It uses local LLMs (via Ollama) to monitor your personal notes, extract actionable items, and sync them to a beautiful task management interface.
 
-## Architecture
+See [Architecture.md](file:///home/rana/Documents/Repos/OllamaTaskCreator/Architecture.md) for detailed technical diagrams and design decisions.
 
-The project is designed with a **Decoupled Architecture** to ensure that data sources, AI processing, and task destinations remain cleanly separated. The repository consists of three distinct components that interface via **ZeroMQ (ZMQ)** and **Protocol Buffers**:
+## 🏗 Architecture (Distributed Setup)
 
-### 1. Webapp Component (`webapp/`)
-Acts as the primary application server providing a web-based GUI and REST API backend.
-- **Backend:** A FastAPI server (`webapp.src.main:app`) managing local file I/O safely via Pydantic schemas. 
-- **ZMQ Client:** It runs a persistent `WebappCommsClient` to listen to background Orchestrator status heartbeats and to trigger task generation (`POST /orchestrator/generate`).
+The system is split into two main components, designed to run in a distributed environment:
 
-### 2. Orchestrator Component (`orchestrator/`)
-The background intelligence worker that processes tasks asynchronously. 
-- **ZMQ Server:** Sits idle running the `OrchestratorCommsServer` PULL socket, waiting for commands from the Webapp while emitting PUSH heartbeats.
-- **AI Processing (`OllamaWrapper`):** Uses Generative AI logic to identify GTD tasks and format output into machine-readable JSON payloads. Uses default local models like `llama3.1:8b`.
-- **Target Interface (`VikunjaInterface`):** Syncs structured payloads to the Vikunja Task REST API.
+### 1. **Web App (Stabilizer)** 🍓
+Designed to run on a **Raspberry Pi** or home server.
+- **Frontend**: A modern, glassmorphic UI for managing tasks and notes.
+- **Backend**: FastAPI server that serves the UI and acts as the ZMQ central hub.
+- **ZMQ Role**: **Binds** to ports 5555 (Commands) and 5556 (Status).
 
-### 3. Common Component (`common/`)
-The shared interface schemas ensuring the two components can communicate safely.
-- **Protobuf Schemas:** Contains `messages.proto` (and compiled `messages_pb2.py`) which explicitly define `OrchestratorCommand` and `OrchestratorStatus`, leveraging strict Enums like `StatusType.PROCESSING`.
-- **Integration Tests:** Houses cross-component testing suites testing the isolated Comms abstraction layers (`test_zmq_interface.py`).
+### 2. **Orchestrator (Engine)** 💻
+Designed to run on a **PC / Workstation** with a GPU for fast AI processing.
+- **AI Extraction**: Uses `llama3.1:8b` to decompose complex notes into atomic, actionable tasks.
+- **Semantic Deduplication**: Uses `nomic-embed-text` embeddings to prevent duplicate tasks, even if they are rephrased.
+- **ZMQ Role**: **Connects** to the Web App's IP to receive commands and send heartbeats.
 
-## Getting Started
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
-- Python 3.9+
-- [Ollama](https://ollama.com/) running locally.
-- A functional Task Target instance (like Vikunja).
+- **Python 3.9+**
+- **Ollama** (Running on your PC)
+- **nomic-embed-text** model (`ollama pull nomic-embed-text`)
+- **llama3.1:8b** model (`ollama pull llama3.1:8b`)
 
-### Installation
+### 1. Setup Web App (on Raspberry Pi)
 ```bash
-# Clone the repository
-git clone https://github.com/example/ollamataskcreator.git
+# On your Rpi
+git clone https://github.com/rana/OllamaTaskCreator.git
 cd OllamaTaskCreator
-
-# Setup a virtual environment
-python -m venv venv
-source venv/bin/activate
-
-# Install requirements
 pip install -r requirements.txt
+python webapp/src/main.py
 ```
+*The Web App will start on `http://0.0.0.0:8000`.*
 
-### Running the End-to-End Environment
-You can safely test the payload structure locally using mocked `requests` before you provision a server:
+### 2. Setup Orchestrator (on PC)
 ```bash
-python demo.py
+# On your PC
+export WEBAPP_URL="http://<RPI_IP>:8000"
+export OLLAMA_HOST="http://localhost:11434"
+# The Orchestrator automatically connects to ZMQ on <RPI_IP>
+python orchestrator/src/main.py
 ```
-This script establishes a dummy Obsidian vault, requests `tinyllama` to parse 4 actions out of mock context, and prints the simulated API JSON packages that passed to the mocked Target instance over the HTTP layer!
 
-### Supported Local Models
-Based on heavy native logic benchmarking within the repository, processing GTD structures offline yields the strongest efficiency running the 8-Billion scale:
-- `llama3.1:8b` (Default)
-- `qwen2.5:7b` (Runner up)
-- `ministral-3`
-*Avoid heavy `<think>` architecture reasoning models (like `deepseek-r1`) for pipeline data bridges unless you have significant offline GPU horsepower.*
+---
+
+## ✨ Features
+
+- **Brain-to-Task Pipeline**: Just write a messy note, and the AI extracts specific TODOs.
+- **Atomic Decomposition**: Complex goals (e.g., "Build a weather app") are broken into 5-10 technical sub-tasks.
+- **Semantic Deduplication**: Smart enough to know that "Buy milk" and "Purchase some milk" are the same task.
+- **Sidebar Filtering**: Real-time filtering of tasks by AI-generated tags.
+- **Zero Cloud**: Your data never leaves your local network.
+
+## 🛠 Tech Stack
+- **Backend**: FastAPI, ZMQ, Protobuf.
+- **AI**: Ollama (Llama 3.1, Nomic Embed).
+- **Frontend**: Vanilla JS, Modern CSS (Glassmorphism).
+
+## 🧹 Repository Contents
+- `webapp/`: UI and API server.
+- `orchestrator/`: AI logic and deduplication engine.
+- `common/`: Shared Protobuf definitions and models.
+- `dummy_vault/`: Example directory for your notes.

@@ -1,4 +1,10 @@
 from abc import ABC, abstractmethod
+from typing import List, Optional
+try:
+    from common.src.models import Task
+except ImportError:
+    # Handle cases where common is not in path yet
+    pass
 
 class BaseNotesSource(ABC):
     """
@@ -32,9 +38,19 @@ class BaseTaskTarget(ABC):
         pass
 
     @abstractmethod
-    def create_task(self, project_id: int, title: str, description: str = "") -> dict:
+    def create_task(self, name: str, description: str = "", priority: str = "Medium", 
+                    status: str = "TODO",
+                    deadline: Optional[str] = None, scheduled: Optional[str] = None, 
+                    tags: List[str] = []) -> dict:
         """
         Creates a core actionable task in the target location/project.
+        """
+        pass
+
+    @abstractmethod
+    def fetch_tasks(self, **kwargs) -> List[dict]:
+        """
+        Fetches all currently existing tasks from the target system.
         """
         pass
 
