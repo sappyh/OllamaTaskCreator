@@ -642,7 +642,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 selectVault(item.dataset.path);
             }
-        }, { passive: true });
+        });
     }
 
     if (noteListEl) {
@@ -657,7 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 switchView('notes');
                 selectNote(item.dataset.name);
             }
-        }, { passive: true });
+        });
     }
 
     // --- Static Event Listeners ---
