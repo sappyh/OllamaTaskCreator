@@ -894,3 +894,131 @@ button {
 .task-list-item.expanded .task-expanded-content {
     display: block;
 }
+/* Responsive Design */
+@media (max-width: 768px) {
+    :root {
+        --sidebar-width: 260px;
+    }
+
+    body {
+        overflow: auto; /* Allow scrolling on body if needed for mobile */
+    }
+
+    #sidebar {
+        position: fixed;
+        left: calc(var(--sidebar-width) * -1);
+        top: 0;
+        bottom: 0;
+        z-index: 1001;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+    }
+
+    #sidebar.open {
+        left: 0;
+    }
+
+    #sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        display: block !important;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+    }
+
+    #sidebar-overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    #app-container {
+        flex-direction: column;
+    }
+
+    #top-bar {
+        padding: 0 1rem;
+        position: sticky;
+        top: 0;
+        z-index: 999;
+    }
+
+    .mobile-only {
+        display: flex !important;
+    }
+
+    #main-content {
+        height: auto;
+        min-height: 100vh;
+    }
+
+    #current-context {
+        flex-direction: row;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .view-toggle {
+        padding: 0.1rem;
+    }
+
+    .view-tab {
+        padding: 0.3rem 0.75rem;
+        font-size: 0.75rem;
+    }
+
+    .header-right-actions {
+        gap: 0.5rem;
+    }
+
+    #orchestrator-status-text {
+        display: none; /* Hide text on very small screens, keep dot */
+    }
+
+    .status-btn {
+        padding: 0.4rem;
+    }
+
+    #editor-container {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .pane {
+        height: 50vh;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    #task-board-container {
+        padding: 1rem;
+    }
+
+    .task-list-header {
+        flex-wrap: wrap;
+    }
+
+    .task-status-select {
+        margin-left: auto;
+    }
+
+    .modal-content.glass {
+        padding: 1.5rem;
+        width: 95%;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Base Utility for Mobile Toggle */
+.mobile-only {
+    display: none;
+}

@@ -65,6 +65,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelTaskBtn = document.getElementById('cancel-task-btn');
 
     let editingTaskId = null;
+    let isMobile = window.innerWidth <= 768;
+
+    // --- Mobile Controls ---
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+    function toggleSidebar() {
+        sidebar.classList.toggle('open');
+        sidebarOverlay.classList.toggle('active');
+    }
+
+    function closeSidebarOnMobile() {
+        if (window.innerWidth <= 768) {
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('active');
+        }
+    }
 
     console.log('App v10 Init');
 
@@ -466,6 +484,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentTagFilter = tag;
         switchView('tasks');
         renderTasks();
+        closeSidebarOnMobile();
     }
 
     window.clearTagFilter = function() {
@@ -519,6 +538,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderVaultsHighlightOnly(vaultPath);
         fetchNotes(vaultPath);
         fetchTasks(vaultPath);
+        closeSidebarOnMobile();
     }
 
     function renderVaultsHighlightOnly(activePath) {
@@ -544,6 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         loadNote(noteName);
+        closeSidebarOnMobile();
     }
 
     function deselectNote() {
@@ -666,6 +687,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (saveNoteBtn) saveNoteBtn.addEventListener('click', saveNote);
     if (deleteNoteBtn) deleteNoteBtn.addEventListener('click', () => { if (currentNote) deleteNoteSpecific(currentNote); });
     if (orchestratorSyncBtn) orchestratorSyncBtn.addEventListener('click', triggerOrchestratorGenerate);
+
+    if (menuToggle) menuToggle.addEventListener('click', toggleSidebar);
+    if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleSidebar);
+
+    window.addEventListener('resize', () => {
+        isMobile = window.innerWidth <= 768;
+    });
 
     if (markdownEditor) {
         markdownEditor.addEventListener('input', () => {

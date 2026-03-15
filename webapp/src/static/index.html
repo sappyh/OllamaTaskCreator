@@ -9,6 +9,9 @@
 </head>
 <body class="dark-theme">
     <div id="app-container">
+        <!-- Sidebar Overlay (Mobile) -->
+        <div id="sidebar-overlay" class="hidden"></div>
+        
         <!-- Sidebar Navigation -->
         <aside id="sidebar">
             <div class="sidebar-header">
@@ -41,6 +44,7 @@
         <main id="main-content">
             <!-- Header bar -->
             <header id="top-bar">
+                <button id="menu-toggle" class="icon-btn mobile-only" title="Toggle Menu">☰</button>
                 <div id="current-context">
                     <span id="current-vault-label" class="badge hidden">No Vault Selected</span>
                     <div class="view-toggle">
