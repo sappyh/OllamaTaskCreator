@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, Query, Body, Path as APIPath
+from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import sys
@@ -16,19 +17,24 @@ from common.src import messages_pb2
 
 from webapp.src.comms import WebappCommsClient
 
-app = FastAPI(title="Vault Notes API", description="API for managing Markdown notes in local directories (vaults)")
-
 # Initialize the Webapp ZMQ Client
 comms_client = WebappCommsClient()
 
-@app.on_event("startup")
-async def startup_event():
-    # Spawn background listener
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Spawn background listener
     await comms_client.start_listening()
-
-@app.on_event("shutdown")
-async def shutdown_event():
+    yield
+    # Shutdown: Clean up listening task
     await comms_client.stop_listening()
+
+app = FastAPI(
+    title="Vault Notes API", 
+    description="API for managing Markdown notes in local directories (vaults)",
+    lifespan=lifespan
+)
+
+
 
 # Resolve the absolute path to the static directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
