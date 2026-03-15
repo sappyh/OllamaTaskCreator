@@ -65,7 +65,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelTaskBtn = document.getElementById('cancel-task-btn');
 
     let editingTaskId = null;
-    let isMobile = window.innerWidth <= 768;
 
     // --- Mobile Controls ---
     const menuToggle = document.getElementById('menu-toggle');
