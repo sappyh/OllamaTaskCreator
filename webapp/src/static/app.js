@@ -135,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/orchestrator/status');
             if (res.ok) {
                 const state = await res.json();
+                console.log('Orchestrator Status:', state);
                 
                 // Auto-refresh tasks if sync just finished
                 if (lastOrchestratorStatus === 'Processing' && state.current_status === 'Idle' && currentVault) {
@@ -144,8 +145,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 lastOrchestratorStatus = state.current_status;
                 updateOrchestratorUI(state);
+            } else {
+                console.error('Failed to fetch orchestrator status:', res.status);
             }
-        } catch (err) {}
+        } catch (err) {
+            console.error('Error polling orchestrator:', err);
+        }
     }
     
     async function triggerOrchestratorGenerate() {
