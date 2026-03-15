@@ -43,9 +43,8 @@ python webapp/src/main.py
 ### 2. Setup Orchestrator (on PC)
 ```bash
 # On your PC
-export WEBAPP_URL="http://<RPI_IP>:8000"
+export WEBAPP_HOST="<RPI_IP>"               # Used for both REST API and ZMQ comms
 export OLLAMA_HOST="http://localhost:11434"
-# The Orchestrator automatically connects to ZMQ on <RPI_IP>
 python orchestrator/src/main.py
 ```
 

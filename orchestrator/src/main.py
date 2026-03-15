@@ -135,7 +135,8 @@ if __name__ == "__main__":
         print(f"[!] Warning: 'llama3' detected, switching to default '{default_model}'")
         model = default_model
     
-    webapp_url = os.environ.get("WEBAPP_URL", "http://127.0.0.1:8000")
+    webapp_host = os.environ.get("WEBAPP_HOST", "127.0.0.1")
+    webapp_url = f"http://{webapp_host}:8000"
     
     orchestrator = MainOrchestrator(
         ollama_model=model,

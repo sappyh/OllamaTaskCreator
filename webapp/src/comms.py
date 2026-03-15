@@ -1,12 +1,13 @@
 import zmq
 import zmq.asyncio
 import asyncio
+import os
 from typing import Optional, Dict, Any
 from common.src import messages_pb2
 
 class WebappCommsClient:
     """Handles ZMQ outbound commands and inbound status heartbeats for the Webapp."""
-    def __init__(self, command_url: str = "tcp://127.0.0.1:5555", status_url: str = "tcp://127.0.0.1:5556"):
+    def __init__(self, command_url: str = "tcp://0.0.0.0:5555", status_url: str = "tcp://0.0.0.0:5556"):
         self.command_url = command_url
         self.status_url = status_url
         self.zmq_ctx = zmq.asyncio.Context()

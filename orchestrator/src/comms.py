@@ -1,14 +1,16 @@
 import zmq
 import zmq.asyncio
 import asyncio
+import os
 from typing import Callable, Optional, Awaitable
 from common.src import messages_pb2
 
 class OrchestratorCommsServer:
     """Handles ZMQ inbound commands and outbound status heartbeats for the Orchestrator."""
-    def __init__(self, command_url: str = "tcp://127.0.0.1:5555", status_url: str = "tcp://127.0.0.1:5556"):
-        self.command_url = command_url
-        self.status_url = status_url
+    def __init__(self, command_url: Optional[str] = None, status_url: Optional[str] = None):
+        webapp_host = os.environ.get("WEBAPP_HOST", "127.0.0.1")
+        self.command_url = command_url or f"tcp://{webapp_host}:5555"
+        self.status_url = status_url or f"tcp://{webapp_host}:5556"
         self.zmq_ctx = zmq.asyncio.Context()
         self.is_processing = False
         
