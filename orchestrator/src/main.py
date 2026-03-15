@@ -97,7 +97,7 @@ class MainOrchestrator:
                         continue
 
                     try:
-                        await self.task_target.create_task(
+                        self.task_target.create_task(
                             name=name,
                             description=desc,
                             priority=priority,

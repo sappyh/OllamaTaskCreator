@@ -20,7 +20,8 @@ async def test_initModel_pulls_the_model():
     # After pulling, the model should be present in the list
     assert ollamaWrapper.isRunning() == True
 
-def test_generateTasksFromNotes():
+@pytest.mark.asyncio
+async def test_generateTasksFromNotes():
     ollamaWrapper = OllamaWrapper(modelName='tinyllama')
     # We assume tinyllama is now running due to the previous test
     if not ollamaWrapper.isRunning():
@@ -31,7 +32,7 @@ def test_generateTasksFromNotes():
         "Buy milk, eggs, bread.",
         "A random thought about the universe being a simulation."
     ]
-    tasks_string = ollamaWrapper.generateTasksFromNotes(notes)
+    tasks_string = await ollamaWrapper.generateTasksFromNotes(notes)
     
     # Check that we got a non-empty string back
     assert isinstance(tasks_string, str)

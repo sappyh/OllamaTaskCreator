@@ -19,7 +19,7 @@ class WebappTaskTarget(BaseTaskTarget):
         except Exception:
             return False
 
-    async def create_task(self, name: str, description: str = "", priority: str = "Medium", 
+    def create_task(self, name: str, description: str = "", priority: str = "Medium", 
                     status: str = "TODO",
                     deadline: Optional[str] = None, scheduled: Optional[str] = None, 
                     tags: List[str] = [], vault_path: str = None) -> dict:

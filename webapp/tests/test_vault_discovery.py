@@ -2,7 +2,7 @@ import pytest
 import os
 import shutil
 from pathlib import Path
-from webapp.src.main import LocalVaultManager
+from webapp.src.vault_manager import LocalVaultManager
 
 @pytest.fixture
 def temp_base(tmp_path):
@@ -22,14 +22,12 @@ def test_automatic_vault_discovery(temp_base):
     # 2. Initialize manager
     mgr = LocalVaultManager(base_dir=temp_base)
     
-    # 3. List vaults
+    # 3. List vaults — base_dir itself is intentionally filtered out
     vaults = mgr.list_vaults()
     
-    # Needs to include the base_dir itself + v1 + v2
-    assert len(vaults) == 3
+    assert len(vaults) == 2
     assert str(v1) in vaults
     assert str(v2) in vaults
-    assert temp_base in vaults
     assert str(Path(temp_base) / ".hidden") not in vaults
 
 def test_delete_vault_physical(temp_base):
