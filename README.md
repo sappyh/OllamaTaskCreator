@@ -35,10 +35,24 @@ Designed to run on a **PC / Workstation** with a GPU for fast AI processing.
 # On your Rpi
 git clone https://github.com/rana/OllamaTaskCreator.git
 cd OllamaTaskCreator
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 python webapp/src/main.py
 ```
 *The Web App will start on `http://0.0.0.0:8000`.*
+
+#### Auto-start on Boot (systemd)
+```bash
+# Copy the service file and enable it for your user
+sudo cp ollama-webapp@.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable ollama-webapp@$USER
+sudo systemctl start ollama-webapp@$USER
+
+# Check status
+sudo systemctl status ollama-webapp@$USER
+```
+> **Note**: The service assumes the repo is at `~/OllamaTaskCreator` with a `venv/` inside it.
 
 ### 2. Setup Orchestrator (on PC)
 ```bash
