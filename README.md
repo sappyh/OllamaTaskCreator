@@ -2,7 +2,7 @@
 
 OllamaTaskCreator is a privacy-first, self-hosted AI task automation pipeline. It uses local LLMs (via Ollama) to monitor your personal notes, extract actionable items, and sync them to a beautiful task management interface.
 
-See [Architecture.md](file:///home/rana/Documents/Repos/OllamaTaskCreator/Architecture.md) for detailed technical diagrams and design decisions.
+See [Architecture.md](Architecture.md) for detailed technical diagrams and design decisions.
 
 ## 🏗 Architecture (Distributed Setup)
 
