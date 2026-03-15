@@ -42,6 +42,7 @@ body {
 #app-container {
     display: flex;
     height: 100vh;
+    height: 100dvh;
     width: 100vw;
 }
 
@@ -449,7 +450,7 @@ button {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 2000;
     backdrop-filter: blur(4px);
     transition: all 0.2s;
 }
@@ -457,6 +458,33 @@ button {
 /* Modals should be hidden by default using display: none if possible, or opacity: 0 with pointer-events: none */
 .modal.hidden {
     display: none;
+}
+
+/* Ensure interactive items respond to touch on iOS and provide explicit interaction feedback */
+.nav-item, .vault-item, .note-item, .tag-item, .task-list-item, .view-tab, button {
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.nav-item:focus-visible,
+.vault-item:focus-visible,
+.note-item:focus-visible,
+.tag-item:focus-visible,
+.task-list-item:focus-visible,
+.view-tab:focus-visible,
+button:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+}
+
+.nav-item:active,
+.vault-item:active,
+.note-item:active,
+.tag-item:active,
+.task-list-item:active,
+.view-tab:active,
+button:active {
+    background-color: var(--bg-surface-hover);
 }
 
 .modal-content.glass {
@@ -893,4 +921,139 @@ button {
 
 .task-list-item.expanded .task-expanded-content {
     display: block;
+}
+/* Responsive Design */
+@media (max-width: 768px) {
+    :root {
+        --sidebar-width: 260px;
+    }
+
+    body {
+        overflow: auto; /* Allow scrolling on body if needed for mobile */
+    }
+
+    #sidebar {
+        position: fixed;
+        left: calc(var(--sidebar-width) * -1);
+        top: 0;
+        bottom: 0;
+        z-index: 1001;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+    }
+
+    #sidebar.open {
+        left: 0;
+    }
+
+    #sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        -webkit-backdrop-filter: blur(4px);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        display: block;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+    }
+
+    #sidebar-overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    #app-container {
+        flex-direction: column;
+    }
+
+    #top-bar {
+        padding: 0 1rem;
+        position: sticky;
+        top: 0;
+        z-index: 999;
+    }
+
+    .desktop-only {
+        display: none !important;
+    }
+
+    .mobile-only {
+        display: flex !important;
+    }
+
+    #main-content {
+        height: auto;
+        min-height: 100vh;
+        min-height: 100dvh;
+    }
+
+    #current-context {
+        flex-direction: row;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .view-toggle {
+        padding: 0.1rem;
+    }
+
+    .view-tab {
+        padding: 0.3rem 0.75rem;
+        font-size: 0.75rem;
+    }
+
+    .header-right-actions {
+        gap: 0.5rem;
+    }
+
+    #orchestrator-status-text {
+        display: none; /* Hide text on very small screens, keep dot */
+    }
+
+    .status-btn {
+        padding: 0.4rem;
+    }
+
+    #editor-container {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .pane {
+        height: 50vh;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    #task-board-container {
+        padding: 1rem;
+    }
+
+    .task-list-header {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .task-status-select {
+        margin-left: auto;
+    }
+
+    .modal-content.glass {
+        padding: 1.5rem;
+        width: 95%;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Base Utility for Mobile Toggle */
+.mobile-only {
+    display: none;
 }

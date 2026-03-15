@@ -65,6 +65,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelTaskBtn = document.getElementById('cancel-task-btn');
 
     let editingTaskId = null;
+    let isMobile = window.innerWidth <= 768;
+
+    // --- Mobile Controls ---
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+
+    function toggleSidebar() {
+        sidebar.classList.toggle('open');
+        sidebarOverlay.classList.toggle('active');
+    }
+
+    function closeSidebarOnMobile() {
+        if (window.innerWidth <= 768) {
+            sidebar.classList.remove('open');
+            sidebarOverlay.classList.remove('active');
+        }
+    }
 
     console.log('App v10 Init');
 
@@ -117,6 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('/orchestrator/status');
             if (res.ok) {
                 const state = await res.json();
+                console.log('Orchestrator Status:', state);
                 
                 // Auto-refresh tasks if sync just finished
                 if (lastOrchestratorStatus === 'Processing' && state.current_status === 'Idle' && currentVault) {
@@ -126,8 +145,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 lastOrchestratorStatus = state.current_status;
                 updateOrchestratorUI(state);
+            } else {
+                console.error('Failed to fetch orchestrator status:', res.status);
             }
-        } catch (err) {}
+        } catch (err) {
+            console.error('Error polling orchestrator:', err);
+        }
     }
     
     async function triggerOrchestratorGenerate() {
@@ -347,13 +370,20 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderTasks() {
         if (!taskBoardEl) return;
         
-        // Extract and render tags for the sidebar
         renderTags();
         
         const filteredTasks = currentTagFilter 
             ? currentTasks.filter(t => t.tags && t.tags.includes(currentTagFilter)) 
             : currentTasks;
 
+        if (isMobile) {
+            renderTasksMobile(filteredTasks);
+        } else {
+            renderTasksDesktop(filteredTasks);
+        }
+    }
+
+    function renderTasksDesktop(filteredTasks) {
         taskBoardEl.innerHTML = `
             <div class="task-list-header-row">
                 <div></div>
@@ -371,63 +401,139 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         filteredTasks.forEach((task, index) => {
-            const item = document.createElement('div');
-            const statusClass = `status-${(task.status || 'TODO').toLowerCase()}`;
-            item.className = `task-list-item ${statusClass}`;
-            item.id = `task-${task.id}`;
+            const item = createTaskItem(task, index);
+            taskBoardEl.appendChild(item);
+        });
+    }
+
+    function renderTasksMobile(filteredTasks) {
+        taskBoardEl.innerHTML = '';
+        const statuses = ['TODO', 'DOING', 'DONE'];
+        
+        statuses.forEach(status => {
+            const groupTasks = filteredTasks.filter(t => (t.status || 'TODO') === status);
+            const groupEl = document.createElement('div');
+            groupEl.className = 'task-status-group';
+            groupEl.dataset.status = status;
             
-            const taskKey = `T-${index + 1}`;
-            
-            item.innerHTML = `
-                <div class="task-list-header">
-                    <div class="task-key">${taskKey}</div>
-                    <span class="task-list-name">${task.name}</span>
-                    <div>
-                        <select class="task-status-select" style="width: 100%;">
-                            <option value="TODO" ${task.status === 'TODO' ? 'selected' : ''}>TODO</option>
-                            <option value="DOING" ${task.status === 'DOING' ? 'selected' : ''}>DOING</option>
-                            <option value="DONE" ${task.status === 'DONE' ? 'selected' : ''}>DONE</option>
-                        </select>
-                    </div>
-                    <div>
-                        <span class="task-priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>
-                    </div>
-                    <div style="font-size: 0.8rem; color: var(--text-tertiary);">
-                        ${task.deadline || '-'}
-                    </div>
-                    <div class="task-list-actions">
-                        <button class="icon-btn edit-task-btn" title="Edit">✎</button>
-                        <button class="icon-btn delete-task-btn" title="Delete">🗑</button>
-                    </div>
-                </div>
-                <div class="task-expanded-content">
-                    <div class="task-meta" style="margin-bottom: 0.5rem;">
-                        <div class="task-tags">${task.tags.map(tag => `<span class="tag-badge">${tag}</span>`).join('')}</div>
-                    </div>
-                    <p style="white-space: pre-wrap; font-size: 0.9rem; border-left: 2px solid var(--border-color); padding-left: 1rem; margin-top: 0.5rem;">${task.description || 'No description provided.'}</p>
-                </div>
+            groupEl.innerHTML = `
+                <h3>${status} <span>${groupTasks.length}</span></h3>
+                <div class="drop-zone" data-status="${status}"></div>
             `;
             
-            // Interaction logic
-            item.addEventListener('click', (e) => {
-                if (e.target.closest('.task-status-select') || e.target.closest('.task-list-actions')) return;
-                item.classList.toggle('expanded');
+            const dropZone = groupEl.querySelector('.drop-zone');
+            
+            groupTasks.forEach((task, index) => {
+                const item = createTaskItem(task, index);
+                item.setAttribute('draggable', 'true');
+                
+                // DnD Events for items
+                item.addEventListener('dragstart', (e) => {
+                    item.classList.add('task-dragging');
+                    e.dataTransfer.setData('text/plain', task.id);
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+                
+                item.addEventListener('dragend', () => {
+                    item.classList.remove('task-dragging');
+                    document.querySelectorAll('.drop-zone').forEach(dz => dz.classList.remove('active'));
+                });
+                
+                dropZone.appendChild(item);
             });
             
-            const statusSelect = item.querySelector('.task-status-select');
+            // DnD Events for groups
+            groupEl.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('active');
+            });
+            
+            groupEl.addEventListener('dragleave', () => {
+                dropZone.classList.remove('active');
+            });
+            
+            groupEl.addEventListener('drop', async (e) => {
+                e.preventDefault();
+                const taskId = e.dataTransfer.getData('text/plain');
+                const targetStatus = groupEl.dataset.status;
+                
+                const task = currentTasks.find(t => t.id == taskId);
+                if (task && task.status !== targetStatus) {
+                    task.status = targetStatus;
+                    await upsertTask(task);
+                    renderTasks();
+                }
+            });
+            
+            taskBoardEl.appendChild(groupEl);
+        });
+    }
+
+    function createTaskItem(task, index) {
+        const item = document.createElement('div');
+        const statusClass = `status-${(task.status || 'TODO').toLowerCase()}`;
+        item.className = `task-list-item ${statusClass}`;
+        item.id = `task-${task.id}`;
+        
+        const taskKey = `T-${index + 1}`;
+        
+        item.innerHTML = `
+            <div class="task-list-header">
+                <div class="task-key">${taskKey}</div>
+                <div class="task-name-col">
+                    <span class="task-list-name">${task.name}</span>
+                    <div class="task-meta-mobile mobile-only">
+                        <span class="task-priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>
+                        ${task.deadline ? `<span class="badge">${task.deadline}</span>` : ''}
+                    </div>
+                </div>
+                <div class="desktop-only text-center">
+                    <select class="task-status-select" style="width: 100%;">
+                        <option value="TODO" ${task.status === 'TODO' ? 'selected' : ''}>TODO</option>
+                        <option value="DOING" ${task.status === 'DOING' ? 'selected' : ''}>DOING</option>
+                        <option value="DONE" ${task.status === 'DONE' ? 'selected' : ''}>DONE</option>
+                    </select>
+                </div>
+                <div class="desktop-only text-center">
+                    <span class="task-priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>
+                </div>
+                <div class="desktop-only" style="font-size: 0.8rem; color: var(--text-tertiary);">
+                    ${task.deadline || '-'}
+                </div>
+                <div class="task-list-actions">
+                    <button class="icon-btn edit-task-btn" title="Edit">✎</button>
+                    <button class="icon-btn delete-task-btn" title="Delete">🗑</button>
+                </div>
+            </div>
+            <div class="task-expanded-content">
+                <div class="task-meta" style="margin-bottom: 0.5rem;">
+                    <div class="task-tags">${task.tags.map(tag => `<span class="tag-badge">${tag}</span>`).join('')}</div>
+                </div>
+                <p style="white-space: pre-wrap; font-size: 0.9rem; border-left: 2px solid var(--border-color); padding-left: 1rem; margin-top: 0.5rem;">${task.description || 'No description provided.'}</p>
+            </div>
+        `;
+        
+        // Interaction logic
+        item.addEventListener('click', (e) => {
+            if (e.target.closest('.task-status-select') || e.target.closest('.task-list-actions')) return;
+            item.classList.toggle('expanded');
+        });
+        
+        const statusSelect = item.querySelector('.task-status-select');
+        if (statusSelect) {
             statusSelect.addEventListener('change', (e) => {
                 task.status = e.target.value;
                 upsertTask(task);
             });
-            
-            const editBtn = item.querySelector('.edit-task-btn');
-            const delBtn = item.querySelector('.delete-task-btn');
-            
-            if (editBtn) editBtn.addEventListener('click', (e) => { e.stopPropagation(); openEditTaskModal(task); });
-            if (delBtn) delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteTask(task.id); });
-            
-            taskBoardEl.appendChild(item);
-        });
+        }
+        
+        const editBtn = item.querySelector('.edit-task-btn');
+        const delBtn = item.querySelector('.delete-task-btn');
+        
+        if (editBtn) editBtn.addEventListener('click', (e) => { e.stopPropagation(); openEditTaskModal(task); });
+        if (delBtn) delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteTask(task.id); });
+        
+        return item;
     }
 
     function renderTags() {
@@ -466,6 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentTagFilter = tag;
         switchView('tasks');
         renderTasks();
+        closeSidebarOnMobile();
     }
 
     window.clearTagFilter = function() {
@@ -519,6 +626,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderVaultsHighlightOnly(vaultPath);
         fetchNotes(vaultPath);
         fetchTasks(vaultPath);
+        closeSidebarOnMobile();
     }
 
     function renderVaultsHighlightOnly(activePath) {
@@ -544,6 +652,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         loadNote(noteName);
+        closeSidebarOnMobile();
     }
 
     function deselectNote() {
@@ -666,6 +775,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (saveNoteBtn) saveNoteBtn.addEventListener('click', saveNote);
     if (deleteNoteBtn) deleteNoteBtn.addEventListener('click', () => { if (currentNote) deleteNoteSpecific(currentNote); });
     if (orchestratorSyncBtn) orchestratorSyncBtn.addEventListener('click', triggerOrchestratorGenerate);
+
+    if (menuToggle) menuToggle.addEventListener('click', toggleSidebar);
+    if (sidebarOverlay) sidebarOverlay.addEventListener('click', toggleSidebar);
+
+    window.addEventListener('resize', () => {
+        const wasMobile = isMobile;
+        isMobile = window.innerWidth <= 768;
+        // When transitioning from mobile to desktop, ensure mobile-only sidebar state is cleared
+        if (wasMobile && !isMobile) {
+            if (typeof sidebar !== 'undefined' && sidebar) {
+                sidebar.classList.remove('open');
+            }
+            if (sidebarOverlay) {
+                sidebarOverlay.classList.remove('active');
+            }
+            if (menuToggle) {
+                menuToggle.classList.remove('active');
+            }
+            document.body.classList.remove('sidebar-open');
+        }
+    });
 
     if (markdownEditor) {
         markdownEditor.addEventListener('input', () => {

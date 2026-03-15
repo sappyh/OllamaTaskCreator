@@ -6,9 +6,13 @@
     <title>Ollama Task Creator - Vaults</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/styles.css?v=4">
+    <link rel="stylesheet" href="/static/mobile.css" media="screen and (max-width: 768px)">
 </head>
 <body class="dark-theme">
     <div id="app-container">
+        <!-- Sidebar Overlay (Mobile) -->
+        <div id="sidebar-overlay" class="hidden"></div>
+        
         <!-- Sidebar Navigation -->
         <aside id="sidebar">
             <div class="sidebar-header">
@@ -41,6 +45,7 @@
         <main id="main-content">
             <!-- Header bar -->
             <header id="top-bar">
+                <button id="menu-toggle" class="icon-btn mobile-only" title="Toggle Menu" aria-label="Toggle menu" aria-expanded="false">☰</button>
                 <div id="current-context">
                     <span id="current-vault-label" class="badge hidden">No Vault Selected</span>
                     <div class="view-toggle">
@@ -50,9 +55,10 @@
                 </div>
                 
                 <div class="header-right-actions">
-                    <button id="orchestrator-sync-btn" class="status-btn" disabled>
+                    <button id="orchestrator-sync-btn" class="status-btn" title="Sync Tasks from Notes" aria-label="Sync Tasks" disabled>
                         <span class="status-dot"></span>
-                        <span id="orchestrator-status-text">Checking...</span>
+                        <span id="sync-icon" class="mobile-only" style="margin-right: 0;">🔄</span>
+                        <span id="orchestrator-status-text" class="desktop-only">Checking...</span>
                     </button>
                     
                     <div id="note-actions" class="hidden">
