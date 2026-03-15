@@ -1031,6 +1031,7 @@ button:active {
     }
 
     .task-list-header {
+        display: flex;
         flex-wrap: wrap;
     }
 
