@@ -935,7 +935,7 @@ button {
         -webkit-backdrop-filter: blur(4px);
         backdrop-filter: blur(4px);
         z-index: 1000;
-        display: block !important;
+        display: block;
         opacity: 0;
         pointer-events: none;
         transition: opacity 0.3s;
